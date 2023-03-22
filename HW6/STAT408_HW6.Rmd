@@ -1,0 +1,347 @@
+---
+title: "STAT408_HW6"
+output:
+  pdf_document: default
+  html_document: default
+date: "2022-12-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question 1
+
+(15 points) We're going to use the mtcars dataset that can be found in the R package
+“datasets”. Import the dataset by running “library(datasets); data(mtcars)”.
+
+```{r}
+library(datasets)
+data(mtcars)
+```
+
+## part (a)
+
+Fit a logistic regression model with the variable am as the response and mpg and
+hp as predictors. What are the estimated regression coefficients from this model?
+How do we interpret them here?
+
+```{r}
+logistic.model <- glm(am~mpg + hp, data=mtcars, family='binomial')
+summary(logistic.model)
+```
+
+```{r}
+exp(1.25961)
+exp(0.05504)
+```
+
+The coefficient of mpg is 1.25961, meaning that one unit increase in miles per gallon will increase the odds of a car having a manual transmission by a factor of exp(1.25961), or 3.524047. Similarly, a one unit increase in gross horsepower will increase the odds of a car having a manual transmission by a factor of 1.056583.
+
+
+## part (b)
+
+What is the predicted probability that a car is automatic if it has hp = 180 and mpg
+= 20?
+
+P(Y = 1) = 1/(1+exp(-(-33.60517  + 1.25961*mpg + 0.05504*hp)))
+
+```{r}
+1 - (1/(1+exp(-(-33.60517  + 1.25961*20 + 0.05504*180))))
+```
+
+## part (c)
+
+Randomly split the data into a 80% train set and a 20% test set. Fit a logistic model
+on the training set and predict on the test set. What is the prediction accuracy of
+transmission type on the test set? (Hint: if the probability of being 1 is greater than 0.5 then set the transmission type equal to 1, otherwise, set it to 0)
+
+```{r}
+# random split the data into 80% training and 20% test
+set.seed(2022)
+index.train <- sample(1:dim(mtcars)[1], 0.8 * dim(mtcars)[1])
+data.train <- mtcars[index.train,]
+data.test <- mtcars[-index.train,]
+
+# fit a logistic regression on training set
+logistic.model2 <- glm(am~mpg+hp, data=data.train, family='binomial')
+
+# predict on the test test, obtain the predicted P(Y=1)
+p.pred <- predict(logistic.model2, data.test, type='response')
+
+# transform to binary response
+y.pred <- ifelse(p.pred>=0.5, 1, 0)
+
+# calculate classification accuracy
+y.truth <- data.test$am
+acc.test <- mean(y.pred==y.truth)
+acc.test
+```
+
+## part (d)
+
+Show the confusion matrix. Calculate the true positive rate, true negative rate,
+and precision.
+
+```{r}
+# confusion matrix
+table(y.pred, y.truth)
+
+# true positive
+TP <- intersect(which(y.truth==1), which(y.pred==1))
+
+# true negative
+TN <- intersect(which(y.truth==0), which(y.pred==0))
+
+# all positives
+AP <- which(data.test$AHD==1)
+
+# all negatives
+AN <- which(data.test$AHD==0)
+
+# predicted positives
+PP <- which(y.pred==1)
+
+# true postive rate
+TPR <- length(TP) / length(AP)
+TPR
+
+# true negative rate
+TNR <- length(TN) / length(AN)
+TNR
+
+# precision
+prec <- length(TP) / length(PP)
+prec
+```
+
+
+# Question 2
+
+(15 points) Use seatpos data to conduct the following analysis. Make sure you
+understand the meaning of each variable in this dataset.
+
+```{r}
+seatpos <- read.csv("seatpos.csv")
+```
+
+## part (a)
+
+Use hipcenter as response and all other variables as predictors to fit a linear model.
+How you interpret this model? What is the issue of this model?
+
+```{r}
+lmodel <- lm(hipcenter~., data = seatpos)
+summary(lmodel)
+```
+
+This model has an adjust R^2 of 0.6001 and no significant predictors at the level alpha = 0.05, suggesting that it may not be a good estimate of hipcenter.
+
+## part (b)
+
+Use cor function to check the correlation of all predictors. What predictors are
+highly correlated? Is there any relation between correlations and model fitting in
+(a)?
+
+```{r}
+cor(seatpos)
+```
+
+Weight is highly correlated with HtShoes, Ht, Seated, and Leg, which are also highly correlated with one another in addition to Arm and Thigh. These are also the predictors that are most strongly correalted with hipcenter. Due to these correaltions among predictors, the model in part a may have issues with collinearity.
+
+## part (c)
+
+Conduct a PCA transformation on all predictors. How much variance the first two
+PCs have?
+
+```{r}
+prseatpos <- prcomp(seatpos, scale = TRUE)
+prseatpos
+```
+
+```{r}
+2.51654318**2
+1.13474718**2
+```
+
+The first two principal components have variances 6.33299 and 1.287651, respectively
+
+## part (d)
+
+Show the linear combination coefficients in the first two PCs. Based on those
+coefficients, what interpretation can you make for the first two PCs?
+
+```{r}
+round(prseatpos$rot[,1],2)
+round(prseatpos$rot[,2],2)
+```
+
+The first two PCs have extremely different coefficients from one another. For instance, the first PC has a coefficient for Age that is -0.01 while the second coefficient is 0.86. The first PC contrasts age and hipcenter to the other variables about a person's body size and dimensions. Therefore, it compares a person's body size to the seat position in the car. The second PC contrasts age, weight, arm, thigh, and hipcenter to shoes, height, seated, and leg. Therefore, it contrasts the upper body measurement to the lower body measurements and measures relatively where the body carries its weight.
+
+## part (e)
+
+Conduct a PCA regression of hipcenter vs. first two PCs. How do you interpret this
+model result? Compare this model with the regular linear regression in (a) and
+give your insight.
+
+```{r}
+lmodpcr <- lm(seatpos$hipcenter ~ prseatpos$x[,1:2])
+summary(lmodpcr)
+```
+
+There is no collinearity because the first two PCs are orthogonal. The first PC measures a person's overall body size so hipcenter is going to decrease as size increases and a person's body is closer to the edges of the car. The second PC shows a positive association, so those who carry more weight in their legs are going to likely be thinner and thus have a greater distance between themselves and the edges of the car. This model appears to perform better than the one in part a as it has an adjusted R^2 of 0.7417 that is greater than the other model's adjusted R^2 of 0.6001.
+
+
+# Question 3
+
+(20 points) Take the fat data, and use the percentage of body fat, siri, as the response and the other variables, except brozek and density, as potential predictors. Remove every tenth observation from the data for use as the test set (1, 11, 21, …). Use the remaining data as the training data building the following models, predict on the test set, and calculate the prediction RMSE on the test set.
+
+```{r}
+fat <- read.csv("fat.csv")
+```
+
+```{r}
+# divide training and testing sets
+test_i <- seq(1, 252, by = 10)
+train <- fat[-test_i,]
+test <- fat[test_i,]
+```
+
+## part (a)
+
+Linear regression with all predictors.
+
+```{r}
+# linear model
+lm_fat <- lm(siri ~ age + weight + height + adipos + free + neck + chest + abdom + hip + thigh + knee + ankle + biceps + forearm + wrist, data = train)
+
+# make predictions
+y.pred <- predict(lm_fat, newdata = test)
+
+# calculate test MSE
+y.test <- test$siri
+MSE.test <- mean((y.test - y.pred)^2)
+
+# root MSE
+RMSE.test <- sqrt(MSE.test)
+RMSE.test
+```
+
+## part (b)
+
+Linear regression with variables selected using backward AIC (hint: consider step
+function).
+
+```{r}
+library(MASS)
+stepAIC(lm_fat)
+```
+
+```{r}
+# new linear model
+lm_new <- lm(siri ~ weight + adipos + free + chest + abdom + thigh + ankle + biceps + forearm, data = train)
+
+# make predictions
+y.pred <- predict(lm_new, newdata = test)
+
+# calculate test MSE
+y.test <- test$siri
+MSE.test <- mean((y.test - y.pred)^2)
+
+# root MSE
+RMSE.test <- sqrt(MSE.test)
+RMSE.test
+```
+
+## part (c)
+
+Principal component regression. Use the first 7 PCs.
+
+```{r}
+prfat <- prcomp(train, scale = TRUE)
+lmodpcr <- lm(train$siri ~ prfat$x[,1:2])
+
+# make predictions
+y.pred <- predict(lmodpcr, newdata = test)
+
+# calculate test MSE
+y.test <- test$siri
+MSE.test <- mean((y.test - y.pred)^2)
+
+# root MSE
+RMSE.test <- sqrt(MSE.test)
+RMSE.test
+```
+
+## part (d)
+
+Ridge regression. Use cross-validation on the training set to select best penalty.
+
+```{r}
+# ridge regression
+
+require(MASS)
+rgmod <- lm.ridge(siri ~ age + weight + height + adipos + free + neck + chest + abdom + hip + thigh + knee + ankle + biceps + forearm + wrist, data = fat, lambda = seq(0, 5e-8, len=21))
+matplot(rgmod$lambda, coef(rgmod), type="l", xlab=expression(lambda)
+          ,ylab=expression(hat(beta)),col=1)
+
+# regular linear model
+modlm <- lm(siri ~ age + weight + height + adipos + free + neck + chest + abdom + hip + thigh + knee + ankle + biceps + forearm + wrist, train)
+yhat <- predict(modlm, test)
+MSE <- mean((yhat - test$siri)^2)
+MSE
+
+# select best lamda by cross-validation
+rgmod <- lm.ridge(siri ~ age + weight + height + adipos + free + neck + chest + abdom + hip + thigh + knee + ankle + biceps + forearm + wrist, train, lambda = seq(0, 5e-8, len=21))
+rgmod$GCV
+which.min(rgmod$GCV)
+```
+
+```{r}
+# predict using best lamda
+yhat.ridge <- cbind(1,as.matrix(test[,-1:-3])) %*% coef(rgmod)[21,]
+MSE.ridge <- mean((yhat.ridge - test$siri)^2)
+MSE.ridge
+```
+
+## part (e)
+
+Lasso. Use cross-validation on the training set to select best penalty.
+
+```{r}
+# Lasso
+require(lars)
+
+# lars function requires the matrix of predictors as its first argument, 
+# and the vector of response as its second argument
+lmod <- lars(as.matrix(fat[,-4]),fat$siri)
+plot(lmod)
+
+# lasso for prediction
+trainy <- train$siri
+trainx <- as.matrix(train[,-101])
+lassomod <- lars(trainx,trainy)
+
+# select best penalty by cross-validation
+set.seed(2022)
+cvout <- cv.lars(trainx,trainy)
+#cvout$index[which.min(cvout$cv)]
+
+# predict using best penalty
+testx <- as.matrix(test[,-101])
+yhat <- predict(lassomod,testx,s=0.0101,mode="fraction")
+MSE <- mean((yhat$fit - test$siri)^2)
+
+# root MSE
+RMSE.test <- sqrt(MSE)
+RMSE.test
+```
+
+## part (f)
+
+Compare all the RMSEs. Are you surprised on the model performance comparison?
+Give you speculation about why you see such result.
+
+The smallest RMSE was 1.946023 for the linear model with all predictors, followed by the linear model chosen by stepAIC. Next was ridge regression, lasso, and then principal component regression. I am slightly surprise that the full linear model performed the best as this was the simplest model, but there may be clear simple relationships between percentage of body fat and variables such as height, weight, or different body measurements.
+
+

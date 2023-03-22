@@ -1,0 +1,127 @@
+---
+title: "STAT408_Project"
+output: html_document
+date: "2022-12-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dataset
+
+```{r}
+obesity <- read.csv('ObesityDataSet_raw_and_data_sinthetic.csv')
+head(obesity)
+is.na(obesity)
+```
+
+```{r}
+plot(obesity$Weight, I(obesity$Height^2), main = "Height^2 vs Weight", col = obesity$NObeyesdad)
+```
+
+# Data Processing
+
+```{r}
+obesity$NObeyesdad <- as.factor(obesity$NObeyesdad)
+levels(obesity$NObeyesdad)
+```
+
+
+```{r}
+library(tidyverse)
+
+obesity <- obesity %>%
+  mutate(obesity_levels = ifelse(NObeyesdad == "Insufficient_Weight", "underweight", ifelse(NObeyesdad == "Normal_Weight", "normal", ifelse(NObeyesdad == "Overweight_Level_I" | NObeyesdad == "Overweight_Level_II", "overweight", "obese"))))
+head(obesity)
+levels(as.factor(obesity$obesity_levels))
+typeof(obesity$obesity_levels)
+```
+
+```{r}
+#Dividing data into training and test set
+#Random sampling 
+samplesize = 0.7*nrow(obesity)
+set.seed(1010)
+index = sample(seq_len(nrow(obesity)), size = samplesize)
+#Creating training and test set 
+datatrain = obesity[index,]
+datatest = obesity[-index,]
+```
+
+
+```{r}
+library(MASS)
+## fit ordered logit model and store results 'm'
+m <- polr(as.factor(obesity_levels) ~ as.factor(Gender) + Age + as.factor(family_history_with_overweight) + as.factor(FAVC) + FCVC + NCP + as.factor(CAEC) + as.factor(SMOKE) + CH2O + as.factor(SCC) + FAF + TUE + as.factor(CALC) + as.factor(MTRANS), data = datatrain, Hess=TRUE)
+
+## view a summary of the model
+summary(m)
+```
+
+```{r}
+#Compute confusion table and misclassification error
+predictobesity = predict(m,datatest)
+table(datatest$obesity_levels, predictobesity)
+mean(as.character(datatest$obesity_levels) != as.character(predictobesity))
+```
+
+
+# Model Selection
+
+```{r}
+stepAIC(m)
+```
+
+
+```{r}
+# took out gender, FCVC, NCP, CH20, CALC
+m_new <- polr(as.factor(obesity_levels) ~ Age + as.factor(family_history_with_overweight) + as.factor(FAVC) + as.factor(CAEC) + as.factor(SMOKE) + as.factor(SCC) + FAF + TUE + as.factor(MTRANS), data = datatrain, Hess=TRUE)
+```
+
+
+```{r}
+#Compute confusion table and misclassification error
+predictobesity = predict(m_new,datatest)
+table(datatest$obesity_levels, predictobesity)
+mean(as.character(datatest$obesity_levels) != as.character(predictobesity))
+```
+
+
+```{r}
+## fit ordered logit model and store results 'm'
+m3 <- polr(as.factor(obesity_levels) ~ as.factor(Gender) + Age + as.factor(family_history_with_overweight) + as.factor(FAVC) + FCVC + NCP + as.factor(CAEC) + as.factor(SMOKE) + CH2O + as.factor(SCC) + FAF + TUE + as.factor(CALC) + as.factor(MTRANS), data = datatrain, Hess=TRUE)
+
+## view a summary of the model
+summary(m3)
+```
+
+```{r}
+#Compute confusion table and misclassification error
+predictobesity = predict(m3,datatest)
+table(datatest$obesity_levels, predictobesity)
+mean(as.character(datatest$obesity_levels) != as.character(predictobesity))
+```
+
+```{r}
+stepAIC(m3)
+```
+
+
+```{r}
+## fit ordered logit model and store results 'm'
+# remove gnder, FCVC, CH20, CALC
+m4 <- polr(as.factor(obesity_levels) ~ Age + as.factor(family_history_with_overweight) + as.factor(FAVC) + NCP + as.factor(CAEC) + as.factor(SMOKE) + CH2O + as.factor(SCC) + FAF + TUE + as.factor(MTRANS), data = datatrain, Hess=TRUE)
+
+## view a summary of the model
+summary(m4)
+```
+
+
+```{r}
+#Compute confusion table and misclassification error
+predictobesity = predict(m4,datatest)
+table(datatest$obesity_levels, predictobesity)
+mean(as.character(datatest$obesity_levels) != as.character(predictobesity))
+```
+

@@ -1,0 +1,229 @@
+---
+title: "STAT408_HW2"
+output: html_document
+date: "2022-09-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Question 1
+
+(10 points). Consider a simple linear regression model y = $beta_0$ +$beta_1$x + $epsilon$. We fit this model based on a dataset with test score (y) and training hours (x). The fitted model is y = 10 + 0.56x.
+
+## part (a)
+
+What is the fitted value of the response variable corresponding to x = 7?
+
+```{r}
+y_fit <- 10 + 0.56*7
+y_fit
+```
+
+
+## part (b)
+
+What is the residual corresponding to the data point with x = 7 and y = 17
+
+```{r}
+13.92-17
+```
+
+
+## part (c)
+
+If the number of training hours is increased by 1, how is the expected test score affected?
+
+The expected test score increases by 0.56 when the number of training hours is increased by 1.
+
+## part (d)
+
+Consider the data point in part b. An additional test score is to be obtained for a new observation at x = 7. Would the test score for the new observation necessarily be 17? Explain.
+
+No, the new observation for the test score at x = 7 does not necessarily have to be equal to 17 because these are real world observations that do not follow a strict pattern and may be outliers.
+
+
+# Question 2
+
+(10 points) In this question, we will still use the teengamb dataset. It concerns a study of teenage gambling in Britain. Each row is one teenager’s records. Download this dataset from Sakai and read it into R.
+
+## part (a)
+
+```{r}
+teengamb <- read.csv("teengamb.csv")
+```
+
+## part (a)
+
+Fit a regression model with the expenditure on gambling as the response and the sex, status, income and verbal score as predictors. Save the model output to a “model” object. Use the summary function to show the model output.
+
+```{r}
+model <- lm(gamble ~ sex + status + income + verbal, data = teengamb)
+summary(model)
+```
+
+## part (b)
+
+What percentage of variation in the response is explained by these predictors?
+
+Approximately 48.16% of the variation in expenditure on gambling can be explained by sex, status, income, and verbal score.
+
+## part (c)
+
+Use model$residuals to show the residuals. Which observation has the largest (positive) residual?
+
+```{r}
+model$residuals
+```
+
+Observation 24 has the largest positive residual of 94.2522174.
+
+## part (d)
+
+Use model$fitted.values to show the fitted response. Compute the correlation of the residuals with the fitted response.
+
+```{r}
+model$fitted.values
+cor(model$residuals, model$fitted.values)
+```
+
+## part (e)
+
+Compute the correlation of the residuals with the income.
+
+```{r}
+cor(model$residual, teengamb$income)
+```
+
+## part (f)
+
+If all other predictors held constant, what would be the difference in predicted expenditure on gambling for a male compared to a female?
+
+If all other predictors remain constant, a male is predicted to spend approximately 22.11833 more pounds on gambling per year than a female.
+
+
+# Question 3
+
+(10 points) The dataset prostate comes from a study on 97 men with prostate cancer who were due to receive a radical prostatectomy. The description of each variable can be found at https://rafalab.github.io/pages/649/prostate.html. Download and import this dataset from Sakai, answer following questions.
+
+```{r}
+prostate <- read.csv("prostate.csv")
+```
+
+## part (a)
+
+Fit a regression model with lpsa as the response and lcavol as the predictor. Show the residual sum of square (RSS) and the $R^2$ of this model (hint: check deviance function for RSS)
+
+```{r}
+lpsa_model <- lm(lpsa ~ lcavol, data = prostate)
+deviance(lpsa_model)
+summary(lpsa_model)
+```
+
+## part (b)
+
+Add lweight, svi, lbph, age, lcp, pgg45 and gleason as predictors to the regression model. Show the residual sum of square (RSS) and the $R^2$ of this model.
+
+````{r}
+lpsa_model2 <- lm(lpsa ~ lcavol + lweight + svi + lbph + age + lcp + pgg45 + gleason, data = prostate)
+deviance(lpsa_model2)
+summary(lpsa_model2)
+```
+
+
+## part (c)
+
+Compare the RSS and $R^2$ of these two models. Explain why you observe such a comparison result.
+
+The RSS for the model with only lcavol as a predictor is 58.91476 while the RSS for the model with the additional predictors is 44.16302. Additionally, the $R^2$ for the model with just lcavol is 0.5346 while the $R^2$ for the model with additional predictors is 0.6234. Because more predictors were added to the model, the RSS decreased while the $R^2$ got closer to 1, suggesting that this new model may be a better fit for estimating lpsa.
+
+
+## part (d)
+
+Use the method introduced in lecture slides to manually fit the model in b. First construct a design matrix X, then a response vector y, and finally use the formula of parameter estimation. Compare the manually estimated parameters with the result from the lm function.
+
+```{r}
+X <- model.matrix(~ lcavol + lweight + svi + lbph + age + lcp + pgg45 + gleason, data = prostate)
+y <- prostate$lpsa
+XtXi <- solve(t(X)%*%X)
+XtXi%*%t(X)%*%y
+```
+
+The estimated parameters found manually appear to be pretty much identical to those that were found using the lm function in part b.
+
+
+# Question 4
+
+(10 points) Thirty samples of cheddar cheese were analyzed for their content of acetic acid, hydrogen sulfide and lactic acid. Each sample was tasted and scored by a panel of judges and the average taste score produced. Use the cheddar dataset from Sakai to answer the following questions.
+
+```{r}
+cheddar <- read.csv("cheddar.csv")
+```
+
+## part (a)
+
+Fit a regression model with taste as the response and the three chemical contents as predictors. Report the values of the regression coefficients.
+
+```{r}
+cheese_model <- lm(taste ~ Acetic + H2S + Lactic, data = cheddar)
+coefficients(cheese_model)
+```
+
+## part (b)
+
+Compute the correlation between the fitted values and the true response. What information can you learn from this correlation?
+
+```{r}
+cor(cheese_model$fitted.values, cheddar$taste)
+```
+
+Because this correlation coefficient of 0.8073256 is pretty high, this suggests that there is a strong positive correlation between the fitted values and true response and therefore this model does a decent job of estimating the taste of the cheese.
+
+## part (c)
+
+How do you interpret the value of intercept in this model? Does this value make sense in this setting (tasting cheese)?
+
+The intercept has a value of -28.8767696, which means that if all three chemical contents were equal to zero the expected taste score of the cheese would be -28.8767696. However, this does not necessarily make sense in the context of this problem as the judges on the panel are likely to be scoring the taste of the cheese on a positive scale (such as from 1 to 10).
+
+
+# Question 5
+
+(10 points) Run the following R code:
+
+```{r}
+set.seed(1234)
+x <- runif(100,0,10)
+y <- 3+x+x^2+rnorm(100,0,1)
+
+lm1 <- lm(y~x)
+lm2 <- lm(y~x+I(x^2))
+```
+
+## part (a)
+
+Explain what the code does. Use ?function_name() or Google if you do not know the meaning of any function.
+
+This code sets a seed so that the same results are returned each time it is run. It then generates a uniform distribution with 100 observations ranging from 0 to 10 for x and a normal distribution with 100 observations ranging from 0 to 1 that are then added to the values of 3+x+$x^2$ for each value of x for y. It then generates two linear models to estimate y, one where just x is a predictor and one where both x and $x^2$ are predictors.
+
+
+## part (b)
+
+For both models, plot the residual versus the fitted response. Describe the pattern you observed in the plots.
+
+```{r}
+plot(lm1$fitted.values, lm1$residuals)
+plot(lm2$fitted.values, lm2$residuals)
+```
+
+There is a strong curved parabola shape shown in the plot for the first model, suggesting that the assumption of linearity is violated for this model and thus that the second model may be a better fit since it includes the $x^2$ term.
+
+
+## part (c)
+
+Which model is better? Give your reason.
+
+The second model is better for estimating y because it does not appear to violate the assumption of linearity as the first model does and it instead includes the $x^2$ term which fits the shape that can be seen in the plot of the residuals versus fitted values for model 1.
+
+

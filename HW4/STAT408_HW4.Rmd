@@ -1,0 +1,292 @@
+---
+title: "STAT408_HW4"
+output: html_document
+date: "2022-10-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question 1
+
+(15 points) Use the prostate data with lpsa as the response and the other variables as predictors. Implement the following variable selection methods to determine the “best” model:
+
+```{r}
+prostate <- read.csv("prostate.csv")
+```
+
+## part (a)
+
+Backward elimination (0.05 cutoff)
+
+```{r}
+# Backward selection
+# fit linear model with all predictors
+prostate_model <- lm(lpsa ~ ., data = prostate)
+summary(prostate_model)
+```
+
+```{r}
+# fit linear model without gleason
+prostate_model <- update(prostate_model, .~.-gleason)
+summary(prostate_model)
+```
+
+```{r}
+# fit linear model without lcp
+prostate_model <- update(prostate_model, .~.-lcp)
+summary(prostate_model)
+```
+
+```{r}
+# fit linear model without pgg45
+prostate_model <- update(prostate_model, .~.-pgg45)
+summary(prostate_model)
+```
+
+```{r}
+# fit linear model without age
+prostate_model <- update(prostate_model, .~.-age)
+summary(prostate_model)
+```
+
+```{r}
+# fit linear model without lbph
+prostate_model <- update(prostate_model, .~.-lbph)
+summary(prostate_model)
+```
+
+## part (b)
+
+AIC
+
+```{r}
+# step AIC
+prostate_model <- lm(lpsa ~ ., data = prostate)
+step(prostate_model)
+```
+
+
+## part (c)
+
+Do these model selection methods give you the same result? If not, do you think
+it is an issue that they are different? Give your insight.
+
+According to backward elimination, the "best" model contains lcavol, lweight, and svi, while according to step AIC, the "best" model contains these three predictors in addition to age and lbph. It does not seem to be much of a problem that these two results differ slightly because they are still very similar with the exception of a couple predictors. This suggests that these predictors are right on the line of being significant or not and we should pay more careful attention to them when selecting the best model.
+
+
+# Question 2
+
+(15 points) The aatemp data come from the U.S. Historical Climatology Network. They are the annual mean temperatures (in degrees F) in Ann Arbor, Michigan going back about 150 years. Download this dataset from Sakai and answer following questions.
+
+```{r}
+aatemp <- read.csv("aatemp.csv")
+```
+
+## part (a)
+
+Fit a linear model of temp~year. Do you think there is a linear trend? (Hint: check plot, parameters, and model goodness of fit)
+
+```{r}
+temp_model <- lm(temp ~ year, data = aatemp)
+summary(temp_model)
+plot(temp_model)
+```
+
+No, there does not seem to be a linear trend between year and temp. The plot of the residuals versus fitted values shows a slight curve, suggesting that the assumption of linearity may have been met. Additionally, the coefficient of year is very small with a value of 0.012237, despite being significant, and the adjusted $R^2$ is only 0.07727, which is very far from one, suggesting that this model is not a good fit for estimating temp as only about 7.7% of the variance in temp can be explained by year alone. 
+
+## part (b)
+
+Observations in successive years may be correlated. Fit a model that estimates this correlation. Does this change your opinion about the trend?
+
+```{r}
+lm.year <- lm(temp ~ I(year-1), data = aatemp)
+summary(lm.year)
+cor(aatemp$year, I(aatemp$year-1))
+```
+
+The results of this model show that observations in successive years do appear to be correlated, however this does not change my opinion that there does not seem to be a linear trend between year and temp.
+
+## part (c)
+
+Fit a polynomial model with degree 5. Plot your fitted model on top of the data.
+
+```{r}
+temp_model3 <- lm(temp ~ year + I(year^2) + I(year^3) + I(year^4) + I(year^5), data = aatemp)
+temp_model3 <- lm(temp ~ poly(year, 5, raw = TRUE), data = aatemp)
+summary(temp_model3)
+plot(temp ~ year, data = aatemp)
+abline(lm(temp ~ poly(year, 5, raw = TRUE), data = aatemp))
+```
+
+## part (d)
+
+Suppose someone claims that the temperature trend was different before and
+after 1930. Fit a segmented regression model to check this claim.
+
+```{r}
+# two base functions
+bl <- function(x){
+  ifelse(x<1930, 1930-x, 0)
+}
+
+br <- function(x){
+  ifelse(x>1930, x-1930, 0)
+}
+
+# fit a segmented model
+lm.seg <- lm(temp ~ bl(year) + br(year), data = aatemp)
+
+# plot model
+x <- seq(20, 48, by=1)
+y <- lm.seg$coefficients[1]+lm.seg$coefficients[2]*bl(x)+lm.seg$coefficients[3]*br(x)
+plot(temp ~ year, data = aatemp, xlab='year', ylab='temp')
+lines(x,y,lty=2)
+
+summary(lm.seg)
+```
+
+This segmented regression model suggests that the claim that the temperature trend was different before and after 1930 may be correct, because the coefficient associated with years before 1930 is negative while the coefficient associated with years after 1930 is positive, suggesting that the relationships are different. Additionally, only the predictor for years before 1930 is significant at the level $alpha$ = 0.05 with a p-value of 0.0314.
+
+
+# Question 3
+
+(15 points) The “longley” dataset includes the following seven social-economic variables from 1947-1962 in the US:
+
+GNP.deflator: GNP implicit price deflator (1954=100) 
+GNP: Gross National Product.
+Unemployed: number of unemployed.
+Armed.Forces: number of people in the armed forces. 
+Population: population ≥ 14 years of age.
+Year: the year (time).
+Employed: number of people employed.
+
+Our goal is to explore the relationship between Employed and other variables. Download this dataset from Sakai and answer the following questions.
+
+```{r}
+longley <- read.csv("longley.csv")
+employed <- lm(Employed ~ ., data = longley)
+summary(employed)
+```
+
+## part (a)
+
+Construct a correlation matrix of six predictors in this dataset. Which predictors do you think are highly correlated? What are the potential reasons for those high correlations?
+
+```{r}
+cor(longley)
+```
+
+GNP.deflator, GNP, population, year, and employed are highly correlated with one another as they have correlation coefficients of above 0.9. This is probably because the population affects the market, which is measured by things like GNP, and the number of people employed as well as year would also have a large effect on things like that because it affects the market for goods and services, how things are priced, and how people are doing financially.
+
+## part (b)
+
+Regress each predictor on others to examine the collinearity. Do you have same conclusion as in (a)?
+
+```{r}
+# regression among predictors
+X <- model.matrix(employed)[,-1]
+for(i in 1:6){
+  r2 <- summary(lm(X[,i]~X[,-i]))$r.squared
+  cat(colnames(X)[i], '\t', r2, '\n')
+}
+```
+
+Yes, the variables GNP.deflator, GNP, Unemployed, Population, and Year all have very high $R^2$ values that are all greater than 0.9 and very close to one, suggesting that there is collinearity among these predictors. The only predictor that was included in this result but not in part b was Unemployed.
+
+## part (c)
+
+Try to remove some highly correlated predictors. Compare the full model and the smaller model. Do you think the smaller model is better? Give you reason.
+
+```{r}
+employed_new <- lm(Employed ~ Armed.Forces + Unemployed + Year, data = longley)
+summary(employed_new)
+```
+
+```{r}
+# regression among predictors
+X <- model.matrix(employed_new)[,-1]
+for(i in 1:3){
+  r2 <- summary(lm(X[,i]~X[,-i]))$r.squared
+  cat(colnames(X)[i], '\t', r2, '\n')
+}
+```
+
+Yes, this new, smaller model appears to be better than the original full model because it still has a very high adjusted $R^2$ value of 0.9911, although this is just slightly less than the original value of 0.9925. However, this model only includes the predictors that were significant at a level of $alpha$ = 0.05 in the original model and the model passes the check of collinearity by regressing the predictors on the others as all of the $R^2$ values are not super close to one.
+
+
+# Question 4
+
+(15 points) The gala dataset contains 30 Galapagos islands and 7 variables. The relationship between the number of plant species and several geographic variables is of interest.
+
+The dataset galamiss contains the Galapagos data with missing values left in. Use two datasets to answer following questions.
+
+```{r}
+gala <- read.csv("gala.csv")
+galamiss <- read.csv("galamiss.csv")
+```
+
+## part (a)
+
+Fit a linear model using gala (the data without missing) with the number of species as the response and the five geographic predictors (without Endemics).
+
+```{r}
+gala_model <- lm(Species ~ Area + Elevation + Nearest + Scruz + Adjacent, data = gala)
+summary(gala_model)
+```
+
+## part (b)
+
+In galamiss, which variable(s) includes missing value? How many missing values do we have?
+
+```{r}
+colSums(is.na(galamiss))
+```
+
+Elevation includes 6 missing values while none of the other variables have missing values.
+
+## part (c)
+
+Fit the same linear model to galamiss using the deletion strategy for missing values. Compare the fit to that in (a).
+
+```{r}
+gala_nomiss <- na.omit(galamiss)
+deletion_model <- lm(Species ~ Area + Elevation + Nearest + Scruz + Adjacent, data = gala_nomiss)
+summary(deletion_model)
+```
+
+This model is very similar to the one found in part a as both elevation and Adjacent are still the only two significant predictors at the level $alpha$ = 0.01. Additionally, the adjusted $R^2$ value is pretty similar to that found in part a, although it is just slightly less than the original value of 0.7171.
+
+## part (d)
+
+Use mean value imputation on galamiss and again fit the model. Compare to previous fits.
+
+```{r}
+means <- colMeans(galamiss, na.rm = T)
+galamiss.impute <- galamiss
+for(i in 1:6){
+  galamiss.impute[is.na(galamiss.impute[,i]), i] <- means[i]
+}
+summary(lm(Species~Area + Elevation + Nearest + Scruz + Adjacent, data = galamiss.impute))
+```
+
+THis model appears to be worse than the previous two fits. Although the same predictors, Elevation and Adjacent, still appear to be very significant, the adjusted $R^2$ value of 0.5774 is less than the previous two values of around 0.7. Therefore, this model as not as good of a fit for predicting Species as the previous models.
+
+## part (e)
+
+Use a regression-based imputation based on the other four geographic predictors to fill in the missing values in galamiss. Fit the same model and compare to previous fits.
+
+```{r}
+# impute elevation
+lm.impute <- lm(Elevation ~ Area + Nearest + Scruz + Adjacent, data = galamiss)
+Elevation.impute <- predict(lm.impute, galamiss[is.na(galamiss$Elevation),])
+round(Elevation.impute, 2)
+
+galamiss.impute1 <- galamiss
+galamiss.impute1[is.na(galamiss.impute1$Elevation),] <- Elevation.impute
+
+summary(lm(Species~Area + Elevation + Nearest + Scruz + Adjacent, data = galamiss.impute1))
+```
+
+This model appears to be the best of all of the models in this question. Not only does it have some additional significant predictors, Nearest and Scruz, at the level $alpha$ = 0.1, but it also has the largest adjusted $R^2$ value of 0.8185, suggesting that it is a pretty good fit for estimating Species.

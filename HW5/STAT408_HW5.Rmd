@@ -1,0 +1,298 @@
+---
+title: "STAT408_HW5"
+output:
+  pdf_document: default
+  html_document: default
+date: "2022-11-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Question 1
+
+(15 points) Let’s revisit the teengamb dataset in this question.
+
+```{r}
+teengamb <- read.csv("teengamb.csv")
+```
+
+## part (a)
+
+Make a plot of gamble on income using a different plotting symbol depending
+on the sex.
+
+```{r}
+plot(gamble~income,pch=as.character(sex),data = teengamb)
+```
+
+## part (b)
+
+Fit a regression model with gamble as the response and income and sex as
+predictors. Display the regression fit with sex = 0 and sex = 1 separately on the
+plot. (Hint: use abline function)
+
+```{r}
+fit <- lm(gamble ~ income + sex, data = teengamb)
+plot(gamble~income,pch=as.character(sex),data = teengamb)
+abline(fit$coef[1] + fit$coef[3], fit$coef[2])
+abline(fit$coef[1], fit$coef[2])
+```
+
+## part (c)
+
+Use the Matching package to find matches on sex by treating income as the
+confounder. Use the same parameters as in the lecture slides. How many
+matched pairs were found? How many cases were not matched?
+
+```{r}
+library(Matching)
+mm <- GenMatch(teengamb$sex, teengamb$income, ties=FALSE)
+match <- mm$matches[,1:2]
+match
+```
+
+19 matched pairs were found while 28 cases were not matched.
+
+## part (d)
+
+Compute the differences in gamble for the matched pairs. Is there a significant
+non-zero difference using one-sample t-test?
+
+```{r}
+pdiff <- teengamb$gamble[match[,1]] - teengamb$gamble[match[,2]]
+t.test(pdiff)
+```
+
+There appears to be a significant difference in gambling among the matched pairs, because the p-value of 0.01644 is less than a significance level of $alpha = 0.05$ and the 95 percent confidence interval includes only negative values and does not include zero.
+
+## part (e)
+
+Plot the difference in gamble against income. In what proportion of pairs did
+the female gamble more than the male?
+
+```{r}
+plot(pdiff ~ teengamb$income[match[,1]], xlab="Income", ylab="Difference")
+abline(h=0)
+```
+
+Only a small proportion of pairs had the female gambling more than the male as many of the points fall below zero.
+
+## part (f)
+
+Do the conclusions from the linear model and the matched pair approach
+agree? Give you interpretation and insight.
+
+Yes, both the linear model and the matched pair approach show that males tend to gamble more than females.
+
+
+# Question 2
+
+(15 points) The infmort dataset records the infant mortality of 105 countries with
+their income, region, and oil export information. The infant mortality in regions of
+the world may be related to per capita income and whether oil is exported.
+
+```{r}
+library(faraway)
+data(infmort)
+```
+
+## part (a)
+
+Which variables are continuous? Which are categorical variables? How many
+levels the categorical variable have?
+
+```{r}
+head(infmort)
+unique(infmort$region)
+unique(infmort$oil)
+```
+
+Region and oil export information are both categorical variables, with region having four levels and oil exports having two level. Income and mortality, on the other hand, are continuous variables.
+
+## part (b)
+
+Regress mortality on all other variables. Interpret the model output and the
+meaning of estimated parameters.
+
+```{r}
+fit2 <- lm(mortality ~ ., data = infmort)
+summary(fit2)
+```
+
+This model shows that region and oil are significant in predicting mortality at the level $alpha = 0.05$ while income is not. Mortality is expected to decrease by approximately 7.834e+01 in regions with no oil exports compared to those with oil exports. Additionally, mortality is lowest in the Americas (decreases by approximately 8.365e+01) and highest in Europe (decreases by only 1.015e+02).
+
+## part (c)
+
+Regress mortality on income, region, oil, the interaction between income and
+region, and the interaction between income and oil. Compare this model with
+the one in (b). Interpret the estimated parameters
+
+```{r}
+fit3 <- lm(mortality ~ income + region + oil + income*region + income*oil, data = infmort)
+summary(fit3)
+```
+
+This model shows that income appears to be significant at the $alpha = 0.05$ level, even though that was not the case for the model in part (b). Additionally, all of the included parameters appear to be significant. Mortality is expected to increase by 0.08484 for each one unit increase in income. Mortality is expected to decrease by 135.53952 in Europe, 72.88297 in Asia, 112.65044 in the Americas, and it is expected to increase by 92.73318 when there are no oil exports. Mortality increase by an additional 0.16781 for each one unit increase in income when in Europe, 0.15485 for each one unit increase in income when in Asia, 0.16117 for each one unit increase in income when in the Americas, and decrease by 0.25772 for every one unit increase in income when there are no oil exports.
+
+## part (d)
+
+Does the model in (c) satisfy the constant variance assumption? If not, give a
+transformation and refit the model. Check if the transformation solves the
+issue.
+
+```{r}
+plot(fit3$fitted.values, fit3$residuals)
+```
+This model does not appear to meet the assumption of constant variance because the plot of the residuals versus fitted values shows a bit of a megaphone shape.
+
+```{r}
+fit4 <- lm(log(mortality) ~ income + region + oil + income*region + income*oil, data = infmort)
+plot(fit4$fitted.values, fit4$residuals)
+```
+
+The log transformation of mortality does appear to solve the issue of the violation of the contant variance assumption as the plot no longer shows a megaphone shape.
+
+## part (e)
+
+Interpret the estimated parameters in (d) for region and oil variables.
+
+```{r}
+summary(fit4)
+```
+
+Mortality is expected to decrease by exp(1.5154005) in Europe, exp(0.8781276) in Asia, exp(0.9534513) in the Americas, and increase by exp(0.4894459) if there are no oil exports.
+
+
+# Question 4
+
+(10 points) In this question, you will use all predictors in births dataset to predict
+the baby’s birth weight.
+
+```{r}
+births <- read.csv("births.csv")
+```
+
+## part (a)
+
+Randomly split the whole dataset into 80% training and 20% test set. Train a
+linear model with all predictors using training set. Use this model to predict the
+weight in the test set. Calculate the prediction MSE, RMSE, and NRMSE on the test 
+set. Use random seed 2022 before you split the data. Interpret the meaning of
+NRMSE.
+
+```{r}
+# random split the data into 80% training and 20% test
+set.seed(2022)
+index.train <- sample(1:dim(births)[1], 0.8 * dim(births)[1])
+data.train <- births[index.train,]
+data.test <- births[-index.train,]
+
+# fit a linear model on the training set
+lm.model <- lm(weight ~ ., 
+               data=data.train)
+
+# predict on the test set
+yhat.test <- predict(lm.model, data.test)
+
+# calculate test MSE
+y.test <- data.test$weight
+MSE.test <- mean((y.test - yhat.test)^2)
+MSE.test
+
+# root MSE
+RMSE.test <- sqrt(MSE.test)
+RMSE.test
+
+# normalized root MSE
+NRMSE.test <- RMSE.test / mean(y.test)
+NRMSE.test
+```
+
+The linear model gives a 14.2% error for birth weight prediction
+
+## part (b)
+
+Repeat the data split and model training in (a), but this time predict on the
+training set. Calculate the MSE, RMSE, and NRMSE on the training set. Compare
+with test MSE, RMSE, and RMSE. What did you find? What do you think why you
+have a such result?
+
+```{r}
+# random split the data into 80% training and 20% test
+set.seed(2022)
+index.train <- sample(1:dim(births)[1], 0.8 * dim(births)[1])
+data.train <- births[index.train,]
+data.test <- births[-index.train,]
+
+# fit a linear model on the training set
+lm.model <- lm(weight ~ ., 
+               data=data.train)
+
+# predict on the test set
+yhat.train <- predict(lm.model, data.train)
+
+# calculate test MSE
+y.train<- data.train$weight
+MSE.train <- mean((y.train - yhat.train)^2)
+MSE.train
+
+# root MSE
+RMSE.train <- sqrt(MSE.train)
+RMSE.train
+
+# normalized root MSE
+NRMSE.train <- RMSE.train / mean(y.train)
+NRMSE.train
+```
+
+This linear model gives a 13.7% error for birth weight prediction. This model provides better results than the model in part (a) with a lower MSE and RMSE as well as a lower prediction error. This is due to the fact that the model was trained on the training data, so it had already learned the patterns present in the data whereas it had not been trained on the test set so it was predicting on completely new data in the previous part.
+
+## part (c)
+
+Conduct a 5-fold cross-validation to predict weight. Plot the test MSE for each
+fold. Show the average test MSE obtained from the cross-validation. Again, use
+2022 as the random seed. 
+
+```{r}
+set.seed(2022)
+
+# randomly shuffle the index
+index.random <- sample(1:dim(births)[1])
+
+# split the data (index) into 5 folds 
+groups <- cut(1:1992, 5, labels = FALSE)
+index.fold <- split(index.random, groups)
+
+# an empty vector to save individual MSE
+MSEs <- c()
+
+# 5-fold cross-validation
+for(index.test in index.fold){
+  
+  # creat training and test set
+  data.test <- births[index.test,]
+  data.train <- births[-index.test,]
+  
+  # fit a linear model on the training set
+  lm.model <- lm(weight ~ ., 
+                 data=births)
+  
+  # predict on the test set
+  yhat.test <- predict(lm.model, data.test)
+  
+  # calculate test MSE
+  y.test <- data.test$weight
+  MSE.test <- mean((y.test - yhat.test)^2)
+  MSEs <- c(MSEs, MSE.test)
+}
+
+# plot 5 MSEs
+plot(1:5, MSEs, col='red', xlab='Fold', ylab='MSE')
+
+# Average 5 MSEs
+mean(MSEs)
+```
+
